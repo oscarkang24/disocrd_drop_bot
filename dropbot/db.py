@@ -30,6 +30,19 @@ CREATE TABLE IF NOT EXISTS boxes (
     count    INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (guild_id, user_id, box_id)
 );
+
+CREATE TABLE IF NOT EXISTS pets (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id   INTEGER NOT NULL,
+    user_id    INTEGER NOT NULL,
+    species_id TEXT    NOT NULL,
+    name       TEXT    NOT NULL,
+    xp         INTEGER NOT NULL DEFAULT 0,
+    is_active  INTEGER NOT NULL DEFAULT 0,
+    wins       INTEGER NOT NULL DEFAULT 0,
+    losses     INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_pets_owner ON pets (guild_id, user_id);
 """
 
 
@@ -155,6 +168,78 @@ class Database:
             (guild_id,),
         ) as cur:
             return list(await cur.fetchall())
+
+    async def try_consume_item(self, guild_id: int, user_id: int, item_id: str, count: int = 1) -> bool:
+        """Atomically remove `count` of an item; returns False if not enough owned."""
+        cur = await self.conn.execute(
+            """
+            UPDATE inventory SET count = count - ?
+            WHERE guild_id = ? AND user_id = ? AND item_id = ? AND count >= ?
+            """,
+            (count, guild_id, user_id, item_id, count),
+        )
+        await self.conn.commit()
+        return cur.rowcount > 0
+
+    # --- pets ---------------------------------------------------------------
+
+    async def create_pet(
+        self, guild_id: int, user_id: int, species_id: str, name: str
+    ) -> int:
+        """Insert a pet; it becomes active if the owner has no active pet."""
+        async with self.conn.execute(
+            "SELECT 1 FROM pets WHERE guild_id = ? AND user_id = ? AND is_active = 1",
+            (guild_id, user_id),
+        ) as cur:
+            has_active = await cur.fetchone() is not None
+        cur = await self.conn.execute(
+            "INSERT INTO pets (guild_id, user_id, species_id, name, is_active) VALUES (?, ?, ?, ?, ?)",
+            (guild_id, user_id, species_id, name, 0 if has_active else 1),
+        )
+        await self.conn.commit()
+        return cur.lastrowid
+
+    async def get_pets(self, guild_id: int, user_id: int) -> list[aiosqlite.Row]:
+        async with self.conn.execute(
+            "SELECT * FROM pets WHERE guild_id = ? AND user_id = ? ORDER BY xp DESC",
+            (guild_id, user_id),
+        ) as cur:
+            return list(await cur.fetchall())
+
+    async def get_active_pet(self, guild_id: int, user_id: int) -> aiosqlite.Row | None:
+        async with self.conn.execute(
+            "SELECT * FROM pets WHERE guild_id = ? AND user_id = ? AND is_active = 1",
+            (guild_id, user_id),
+        ) as cur:
+            return await cur.fetchone()
+
+    async def get_pet(self, guild_id: int, user_id: int, pet_id: int) -> aiosqlite.Row | None:
+        async with self.conn.execute(
+            "SELECT * FROM pets WHERE id = ? AND guild_id = ? AND user_id = ?",
+            (pet_id, guild_id, user_id),
+        ) as cur:
+            return await cur.fetchone()
+
+    async def set_active_pet(self, guild_id: int, user_id: int, pet_id: int) -> None:
+        await self.conn.execute(
+            "UPDATE pets SET is_active = 0 WHERE guild_id = ? AND user_id = ?",
+            (guild_id, user_id),
+        )
+        await self.conn.execute("UPDATE pets SET is_active = 1 WHERE id = ?", (pet_id,))
+        await self.conn.commit()
+
+    async def add_pet_xp(self, pet_id: int, xp: int) -> None:
+        await self.conn.execute("UPDATE pets SET xp = xp + ? WHERE id = ?", (xp, pet_id))
+        await self.conn.commit()
+
+    async def rename_pet(self, pet_id: int, name: str) -> None:
+        await self.conn.execute("UPDATE pets SET name = ? WHERE id = ?", (name, pet_id))
+        await self.conn.commit()
+
+    async def record_battle(self, winner_pet_id: int, loser_pet_id: int) -> None:
+        await self.conn.execute("UPDATE pets SET wins = wins + 1 WHERE id = ?", (winner_pet_id,))
+        await self.conn.execute("UPDATE pets SET losses = losses + 1 WHERE id = ?", (loser_pet_id,))
+        await self.conn.commit()
 
     # --- lootboxes ----------------------------------------------------------
 

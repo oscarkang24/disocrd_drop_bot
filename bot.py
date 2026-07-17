@@ -21,6 +21,7 @@ COGS = [
     "dropbot.cogs.drops",
     "dropbot.cogs.lootbox",
     "dropbot.cogs.inventory",
+    "dropbot.cogs.pets",
     "dropbot.cogs.admin",
 ]
 

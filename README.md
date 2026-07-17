@@ -20,6 +20,25 @@ members spend them on **tiered lootboxes** full of rarity-graded items with powe
 | 🧰 Golden Bull Chest | 1,000 | Solid rare/epic odds, 0.5% mythic |
 | 🎇 Celestial Niu Vault | 5,000 | No commons; 12% legendary, 3% mythic |
 
+### 🐾 Digital pets & auto-battles
+- **Adopt** a free starter (`/pet adopt`) or **hatch** rarer species from eggs
+  (`/pet hatch` — Speckled 500, Storm-Marked 2,500, Celestial 10,000 coins).
+- 13 species across five elements (🌿 Earth, 🔥 Flame, 💧 Aqua, ⚡ Storm, 👻 Spirit)
+  and all six rarities, each with a **3-stage evolution chain** (evolves at Lv.15 / Lv.35).
+- **Feed looted items** to your pet (`/pet feed`) — every point of item ⚡power = 4 XP,
+  so that Mythic pull is 4,000 XP of pet food.
+- **Auto-battles** (`/pet battle @user [wager]`) — challenge flow with an Accept button,
+  then a fully simulated turn-based fight: speed order, crits, elemental
+  advantages (Flame > Earth > Storm > Aqua > Flame), HP bars, and a round-by-round log.
+  Winner takes coins + XP (and the wager pot, if any).
+
+### 🎨 Generated pet art
+Every species/stage gets deterministic procedural **pixel-art sprites**
+(`dropbot/artgen.py`) — mirrored-symmetry sprites with element-based palettes that
+grow bigger and spikier at each evolution. Sprites render on demand and are embedded
+in pet cards and battle results. Regenerate all art + a contact sheet with
+`python -m dropbot.artgen`.
+
 ### ⚔️ Items & rarities
 37 themed items across six tiers — ⚪ Common, 🟢 Uncommon, 🔵 Rare, 🟣 Epic,
 🟠 Legendary, 🔴 Mythic — each with a **⚡ power** stat (2 up to 1,000 for the
@@ -33,6 +52,9 @@ NSZN Singularity). Collect items to climb the power leaderboard.
 | `/leaderboard coins\|power` | Top members by wealth or collection power |
 | `/shop` `/buy` `/boxes` `/open` | Lootbox economy |
 | `/inventory` `/iteminfo` | Collection browsing |
+| `/pet adopt` `/pet hatch` `/pet info` `/pet list` | Get and inspect pets |
+| `/pet feed` `/pet rename` `/pet activate` | Raise and manage pets |
+| `/pet battle @user [wager]` | Auto-battle another member's pet |
 | `/event reward-reaction` `/event reward-voice` | Admin: event payouts |
 | `/coins give` `/coins take` | Admin: manual adjustments |
 | `/drop spawn` | Admin: force a drop in the current channel |
@@ -63,6 +85,9 @@ sync instantly to that guild instead of taking up to an hour globally.
 - **Earning rates, drop frequency, daily bonus** — tweak `dropbot/config.py`.
 - **Items** — edit `data/items.json` (id, name, emoji, rarity, power, description).
 - **Boxes & odds** — edit `LOOTBOXES` in `dropbot/items.py`.
+- **Pet species & stats** — edit `data/pets.json`; leveling/evolution rules in `dropbot/pets.py`.
+- **Battle balance** — tweak `dropbot/battle.py` (crit rate, round cap, damage formula).
+- **Art style** — palettes and sprite parameters in `dropbot/artgen.py`.
 
 Data is stored in a local SQLite file (`dropbot.db` by default); balances and
 inventories are kept **per guild**.
