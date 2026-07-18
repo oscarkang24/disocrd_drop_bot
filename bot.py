@@ -51,6 +51,19 @@ class DropBot(commands.Bot):
 
     async def on_ready(self):
         log.info("Logged in as %s (%s)", self.user, self.user.id)
+        log.info("Member of %d guild(s): %s", len(self.guilds), ", ".join(g.name for g in self.guilds))
+        # Without a DEV_GUILD_ID, global command sync can take up to an hour to
+        # propagate — also push commands directly to each joined guild so they
+        # show up immediately.
+        if not config.DEV_GUILD_ID and not getattr(self, "_guild_synced", False):
+            self._guild_synced = True
+            for guild in self.guilds:
+                try:
+                    self.tree.copy_global_to(guild=guild)
+                    synced = await self.tree.sync(guild=guild)
+                    log.info("Synced %d commands to guild %s", len(synced), guild.name)
+                except discord.HTTPException as exc:
+                    log.warning("Failed to sync to %s: %s", guild.name, exc)
 
     async def close(self):
         await self.db.close()
